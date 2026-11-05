@@ -1,10 +1,10 @@
-# The answer letter is rewritten at the unmask step
+# The answer letter is rewritten at every step
 
-These scripts change the letter written into the answer slot at the step that slot is unmasked. They are for diffusion language models. The models are LaViDa, Dream-VL, LLaDA-V, and MMaDA. The tasks are ScienceQA, M3CoT, MMBench, MMStar, POPE, MME, and V*.
+In these diffusion language models, the answer letter is rewritten at every step. The letter that counts is the one left in the answer slot when that slot is unmasked. The models are LaViDa, Dream-VL, LLaDA-V, and MMaDA. The tasks are ScienceQA, M3CoT, MMBench, MMStar, POPE, MME, and V*.
 
-The code is in `experiments/unmask_order/`. Prior subtraction changes letter logits by a content-free prior while the slot is still masked. Hysteresis, bump, and retune replace the unmask-step token with a token that same slot already wrote. The agree gate is an offline replay over saved write histories.
+The code in `experiments/unmask_order/` leaves the unmask order unchanged and changes only that letter. It uses the letter scores at the unmask step and the letters that same slot has already written.
 
-Run the scripts from `/mnt/pfs/peng_gao/visual-hysteresis` on that machine. One cell from `experiments/unmask_order/queue_release_20261026.sh`:
+Run the scripts from `/mnt/pfs/peng_gao/visual-hysteresis` on that machine. One example from `experiments/unmask_order/queue_release_20261026.sh`:
 
 ```bash
 .venv/bin/python3 experiments/unmask_order/run_release_20261026.py e \

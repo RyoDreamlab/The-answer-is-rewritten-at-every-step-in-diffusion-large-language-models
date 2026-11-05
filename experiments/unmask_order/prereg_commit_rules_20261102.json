@@ -1,0 +1,40 @@
+{
+  "title": "Pre-registered commit-step rule search (offline replay), 2026-11-02",
+  "written_before_evaluation": true,
+  "data": "pro6000 stock jsonl per (model, dataset) cell, 4 models x 7 datasets = 28 cells; per-item answer-slot write history pos0_argmax and commit-step letter logits",
+  "replay_note": "Rules change only the token committed into the answer slot; earlier steps and unmask order equal stock. Exact for models whose letter is the leading token (validated 6/6 vs real hyst decodes). For LLaDA-V the letter commits early and later text is regenerated, so LLaDA-V replay is approximate.",
+  "labels_default": "if a record has no labels field: A..(n_opt) for MCQ datasets; Yes/No for pope and mme",
+  "answer_parser": {
+    "applies_to": "all cells (stock and replayed outputs); defined before looking at accuracy",
+    "mcq": [
+      "1. if finished_letter (leading token) is a valid option letter, use it",
+      "2. first match of (?i:answer)\\s*(?i:is|:)?\\s*\\(?([A-E])\\b  (letter must be uppercase)",
+      "3. else first match of (?i:option)\\s*\\(?([A-E])\\b",
+      "4. else first match of \\(([A-E])\\)",
+      "5. else first match of (?:^|\\s)([A-E])[.:]\\s",
+      "letter must be among the first n_opt letters; otherwise unparsed (counted wrong)"
+    ],
+    "yes_no": [
+      "1. if finished_letter is yes/no, use it",
+      "2. else first whole-word yes|no (case-insensitive) in finished_text",
+      "otherwise unparsed (counted wrong)"
+    ],
+    "not_used": "option-text matching (records carry no option texts)"
+  },
+  "candidate_rules": {
+    "R0_stock": {"constants": 0, "desc": "commit the model's own last write"},
+    "R1_vote_all": {"constants": 0, "desc": "majority of valid-option letters over the slot's whole write history; ties to the latest"},
+    "R2_back1": {"constants": 0, "desc": "commit the write one step before the unmask step"},
+    "R3_run": {"constants": 1, "grid": {"K": [2, 4, 6]}, "desc": "if the final letter held fewer than K steps, restore the previous different letter"},
+    "R4_early_m": {"constants": 1, "grid": {"tau": [0.1, 0.2, 0.3]}, "desc": "if commit top-2 option margin < tau, use the first-half majority"},
+    "R5_commit_spread": {"constants": 0, "desc": "argmax of commit logits minus alpha_n log p_cf, alpha_n = 1 - p_min/p_max; stock where no commit logits or no prior"},
+    "R6_agree_gate": {"constants": 0, "desc": "phenomenon-derived: keep the last write if it equals the history majority; otherwise commit the argmax of (commit logits - alpha_n log p_cf) among letters the slot actually wrote"}
+  },
+  "selection_criterion": "maximize pooled net change in correct answers summed over all cells on the dev split; ties broken toward fewer constants, then toward the order R0,R1,R2,R5,R6,R3,R4. Stock may win.",
+  "split": "per cell, items shuffled with random.Random('20261102:' + cell) and split 50/50 into dev (first half) and held-out (second half). Held-out never used for selection.",
+  "cross_cell": [
+    "models: select on {lavida, mmada} (all items), test on {dreamvl, lladav}; and the reverse",
+    "datasets: select on {sciqa, m3cot, mmbench, mmstar}, test on {pope, mme, vstar}; and the reverse"
+  ],
+  "reporting": "per-cell held-out delta (correct count), wins/losses/ties, net; paired bootstrap 95% CI of pooled held-out delta (items resampled within cell, 2000 reps, seed 20261102), for all cells, excluding yes/no datasets (pope, mme), and excluding LLaDA-V; oracle upper bound per cell (gold appears anywhere in the write history) labelled as oracle"
+}
